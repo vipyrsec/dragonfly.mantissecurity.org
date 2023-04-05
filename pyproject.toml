@@ -9,7 +9,7 @@ readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
     "fastapi==0.93.0",
-    "uvicorn[standard]==0.21.0",
+    "uvicorn[standard]==0.21.1",
     "imsosorry==1.2.0",
     "sentry-sdk[fastapi]==1.16.0",
 ]
