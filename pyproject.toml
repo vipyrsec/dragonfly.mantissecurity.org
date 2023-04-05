@@ -1,0 +1,65 @@
+[project]
+name = "dragonfly.letsbuilda.dev"
+description = "Public API for our projects"
+authors = [
+    { name = "Bradley Reynolds", email = "bradley.reynolds@darbia.dev" },
+]
+license = { text = "MIT" }
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "fastapi==0.93.0",
+    "uvicorn[standard]==0.21.0",
+    "imsosorry==1.2.0",
+    "sentry-sdk[fastapi]==1.16.0",
+]
+dynamic = ["version"]
+
+[project.urls]
+repository = "https://github.com/letsbuilda/dragonfly.letsbuilda.dev/"
+documentation = "https://docs.letsbuilda.dev/dragonfly.letsbuilda.dev/"
+
+[project.optional-dependencies]
+dev = [
+    "black",
+    "isort",
+    "pylint",
+    "pre-commit",
+]
+tests = [
+    "pytest",
+    "httpx", # for fastapi.testclient.TestClient
+]
+docs = [
+    "sphinx",
+    "furo",
+    "sphinx-autoapi",
+    "releases",
+]
+
+[build-system]
+requires = ["setuptools", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.dynamic]
+version = { attr = "dragonfly.__version__" }
+
+[tool.black]
+target-version = ["py310"]
+line-length = 120
+
+[tool.isort]
+profile = "black"
+
+[tool.pytest.ini_options]
+addopts = "tests -r a -v --doctest-modules src"
+
+[tool.pylint.format]
+max-line-length = 120
+
+[tool.pylint.messages_control]
+disable = "C0103,R0903,E0213"
+# justifications:
+# C0103 (invalid-name) - pydantic
+# R0903 (too-few-public-methods) - models
+# E0213 (no-self-argument) - pydantic

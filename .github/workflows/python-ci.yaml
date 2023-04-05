@@ -1,0 +1,28 @@
+name: Python CI
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+  pull_request:
+
+jobs:
+  pre-commit:
+    uses: darbiadev/.github/.github/workflows/generic-precommit.yaml@0c105e4ec7fd13ac581ccd1ea3fe5f25091ddc14
+
+  lint:
+    needs: pre-commit
+    uses: darbiadev/.github/.github/workflows/python-lint.yaml@0c105e4ec7fd13ac581ccd1ea3fe5f25091ddc14
+
+  test:
+    needs: lint
+    strategy:
+      matrix:
+        os: [ ubuntu-latest, windows-latest, macos-latest ]
+        python-version: [ "3.11" ]
+
+    uses: darbiadev/.github/.github/workflows/python-test.yaml@0c105e4ec7fd13ac581ccd1ea3fe5f25091ddc14
+    with:
+      os: ${{ matrix.os }}
+      python-version: ${{ matrix.python-version }}
