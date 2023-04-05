@@ -8,7 +8,7 @@ from zipfile import ZipFile
 import aiohttp
 import yara
 
-RULES_URL: Final[str] = "https://github.com/SkeletalDemise/DragonFly/archive/refs/heads/main.zip"
+REPO_ZIP_URL: Final[str] = "https://api.github.com/repos/SkeletalDemise/DragonFly/zipball/"
 HEADERS: Final[dict[str, str]] = {"Authorization": f"Bearer {getenv('DRAGONFLY_GITHUB_TOKEN')}"}
 
 
@@ -17,7 +17,7 @@ async def _fetch_rules() -> dict[str, str]:
     files = {}
     buffer = BytesIO()
     async with aiohttp.ClientSession(raise_for_status=True, headers=HEADERS) as http_session:
-        async with http_session.get(RULES_URL) as response:
+        async with http_session.get(REPO_ZIP_URL) as response:
             buffer.write(await response.content.read())
     buffer.seek(0)
     with ZipFile(buffer) as zip_file:
