@@ -4,5 +4,8 @@
 Changelog
 =========
 
+- :release:`1.1.0 <5th April 2023>`
+- :feature:`7` MVP
+
 - :release:`1.0.0 <4th April 2023>`
 - :feature:`1` Initialize package
