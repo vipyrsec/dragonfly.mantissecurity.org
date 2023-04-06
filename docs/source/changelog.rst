@@ -4,6 +4,9 @@
 Changelog
 =========
 
+- :release:`1.2.0 <6th April 2023>`
+- :feature:`8` Add rules repo commit hash to metadata route
+
 - :release:`1.1.0 <5th April 2023>`
 - :feature:`7` MVP
 

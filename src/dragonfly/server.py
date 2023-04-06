@@ -24,7 +24,9 @@ from .rules import get_rules
 @asynccontextmanager
 async def lifespan(app_: FastAPI):
     """Load the state for the app"""
-    app_.state.rules = await get_rules()
+    rules_commit, rules = await get_rules()
+    app_.state.rules_commit = rules_commit
+    app_.state.rules = rules
     yield
 
 
@@ -58,19 +60,34 @@ app.add_middleware(
 router_root = APIRouter()
 
 
+class ServerMetadata(BaseModel):
+    """Metadata about the server"""
+
+    version: str
+    server_commit: str
+    rules_commit: str
+
+
 @router_root.get("/")
-async def root_route():
-    """Get base metadata"""
-    return {
-        "message": "Welcome to the API",
-        "version": __version__,
-    }
+async def root_route(request: Request) -> ServerMetadata:
+    """Get server metadata"""
+    try:
+        rules_commit = request.app.state.rules_commit
+    except AttributeError:
+        rules_commit = "inside_ci"
+    return ServerMetadata(
+        version=__version__,
+        server_commit=getenv("GIT_SHA", "development"),
+        rules_commit=rules_commit,
+    )
 
 
 @router_root.post("/update-rules/")
-async def update_rules(request: Request) -> bool:
+async def update_rules(request: Request) -> str:
     """Update the rules"""
-    request.app.state.rules = await get_rules()
+    rules_commit, rules = await get_rules()
+    request.app.state.rules_commit = rules_commit
+    request.app.state.rules = rules
     return True
 
 
