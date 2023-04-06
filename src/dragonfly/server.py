@@ -5,7 +5,8 @@ from os import getenv
 
 import aiohttp
 import sentry_sdk
-from fastapi import APIRouter, FastAPI
+from aiohttp import ClientResponseError
+from fastapi import APIRouter, FastAPI, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
 
 # pylint: disable-next=no-name-in-module
@@ -57,6 +58,13 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+
+class Error(BaseModel):
+    """Returned when an error occurs"""
+
+    detail: str
+
+
 router_root = APIRouter()
 
 
@@ -100,24 +108,30 @@ class PyPIPackage(BaseModel):
 class PackageScanResults(BaseModel):
     """Results of the scan"""
 
-    result: str
     matches: dict[str, list[str]]
 
 
-@router_root.post("/check/")
+@router_root.post("/check/", responses={404: {"model": Error, "description": "The package was not found"}})
 async def pypi_check(package_metadata: PyPIPackage, request: Request) -> PackageScanResults:
     """Scan a PyPI package for malware"""
-    async with aiohttp.ClientSession(raise_for_status=True) as http_session:
-        if download_url := await find_package_source_download_url(http_session, package_metadata.package_name):
-            package_contents = await fetch_package_contents(http_session, download_url)
-        else:
-            return PackageScanResults(result="Package is a wheel.", matches=[])
+    try:
+        async with aiohttp.ClientSession(raise_for_status=True) as http_session:
+            if download_url := await find_package_source_download_url(http_session, package_metadata.package_name):
+                package_contents = await fetch_package_contents(http_session, download_url)
+            else:
+                raise HTTPException(
+                    status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                    detail="Package is a wheel!",
+                )
 
-        results = search_contents(request.app.state.rules, package_contents)
-        if len(results) > 0:
-            return PackageScanResults(result="Package is malicious!", matches=results)
+            results = search_contents(request.app.state.rules, package_contents)
+            return PackageScanResults(matches=results)
 
-        return PackageScanResults(result="Package is safe.", matches=[])
+    except ClientResponseError as exception:
+        raise HTTPException(
+            status_code=exception.status,
+            detail=f"Upstream responded with '{exception.message}'!",
+        )
 
 
 app.include_router(router_root)
