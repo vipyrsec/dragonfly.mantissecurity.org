@@ -21,9 +21,11 @@ async def _fetch_rules() -> dict[str, str]:
             buffer.write(await response.content.read())
     buffer.seek(0)
     with ZipFile(buffer) as zip_file:
-        for file_name in zip_file.namelist():
-            if file_name.endswith(".yara"):
-                files[file_name.removesuffix(".yara")] = zip_file.read(file_name).decode()
+        for file_path in zip_file.namelist():
+            if file_path.endswith(".yara"):
+                file_name = file_path.split("/")[-1]
+                file_name = file_name.removesuffix(".yara")
+                files[file_name] = zip_file.read(file_path).decode()
     return files
 
 
