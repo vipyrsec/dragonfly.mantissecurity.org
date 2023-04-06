@@ -24,7 +24,7 @@ documentation = "https://docs.letsbuilda.dev/dragonfly.letsbuilda.dev/"
 dev = [
     "black",
     "isort",
-    "pylint",
+    "ruff",
     "pre-commit",
 ]
 tests = [
