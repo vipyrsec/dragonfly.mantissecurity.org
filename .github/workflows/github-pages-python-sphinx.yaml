@@ -1,4 +1,4 @@
-name: GitHub Pages - Python Sphinx
+name: "GitHub Pages - Python Sphinx"
 
 on:
   push:
@@ -13,4 +13,4 @@ permissions:
 
 jobs:
   docs:
-    uses: darbiadev/.github/.github/workflows/github-pages-python-sphinx.yaml@0c105e4ec7fd13ac581ccd1ea3fe5f25091ddc14
+    uses: darbiadev/.github/.github/workflows/github-pages-python-sphinx.yaml@a191041c5139218df2feb95690ac747c41113052
