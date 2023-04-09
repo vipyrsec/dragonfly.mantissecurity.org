@@ -109,6 +109,7 @@ class PackageScanResults(BaseModel):
     """Results of the scan"""
 
     matches: dict[str, list[str]]
+    score: int
 
 
 @router_root.post("/check/", responses={404: {"model": Error, "description": "The package was not found"}})
@@ -124,8 +125,11 @@ async def pypi_check(package_metadata: PyPIPackage, request: Request) -> Package
                     detail="Package is a wheel!",
                 )
 
-            results = search_contents(request.app.state.rules, package_contents)
-            return PackageScanResults(matches=results)
+            analysis = search_contents(request.app.state.rules, package_contents)
+            return PackageScanResults(
+                matches={file.filename: file.rules for file in analysis.malicious_files if file.rules},
+                score=analysis.calculate_total_score(),
+            )
 
     except ClientResponseError as exception:
         raise HTTPException(

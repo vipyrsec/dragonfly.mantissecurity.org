@@ -1,9 +1,34 @@
 """Interactions with parsing package metadata and contents"""
 
 import tarfile
+from dataclasses import dataclass
 from io import BytesIO
 
 import aiohttp
+
+
+@dataclass
+class MaliciousFile:
+    """Represents a malicious file, which YARA rules it matched, and it's individual score"""
+
+    # Filename
+    filename: str
+
+    # Rules that this file matched
+    rules: list[str]
+
+    # Individual score for this file only
+    score: int
+
+
+@dataclass
+class PackageAnalysisResults:
+    """Results of analysing a PyPi package for malware"""
+
+    malicious_files: list[MaliciousFile]
+
+    def calculate_total_score(self) -> int:
+        return sum(file.score for file in self.malicious_files)
 
 
 async def find_package_source_download_url(http_session: aiohttp.ClientSession, package_title: str) -> str | None:
@@ -39,12 +64,16 @@ async def fetch_package_contents(
     return files
 
 
-def search_contents(rules, files: dict[str, str]) -> dict[str, list[str]]:
+def search_contents(rules, files: dict[str, str]) -> PackageAnalysisResults:
     """Check a directory for malicious files and return the matches"""
-    results = {}
+    malicious_files: list[MaliciousFile] = []
     for file_name, file_contents in files.items():
         matches = rules.match(data=file_contents)
-        if matches:
-            results[file_name] = [match.namespace for match in matches]
+        file = MaliciousFile(
+            filename=file_name,
+            rules=[match.namespace for match in matches],
+            score=sum(match.meta.get("weight", 1) for match in matches),
+        )
+        malicious_files.append(file)
 
-    return results
+    return PackageAnalysisResults(malicious_files=malicious_files)
