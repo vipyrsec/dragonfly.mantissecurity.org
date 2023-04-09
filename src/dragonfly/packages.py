@@ -11,14 +11,14 @@ import aiohttp
 class MaliciousFile:
     """Represents a malicious file, which YARA rules it matched, and it's individual score"""
 
-    # Filename
     filename: str
+    """Filename"""
 
-    # Rules that this file matched
     rules: list[str]
+    """Rules that this file matched"""
 
-    # Individual score for this file only
     score: int
+    """Individual score for this file only"""
 
 
 @dataclass
