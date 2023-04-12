@@ -18,7 +18,7 @@ class Package:
     name: str
     pypi_url: str
     version: str
-    inspector_url: str
+    inspector_url: str | None
     download_url: str | None
 
 
@@ -73,7 +73,7 @@ async def find_package_source_download_url(http_session: aiohttp.ClientSession, 
 
 
 async def get_package(http_session: aiohttp.ClientSession, package_title: str) -> Package:
-    """Find the inspector URL pointing to the root of the latest version of the package"""
+    """Parse package metadata from the PyPI JSON API."""
     metadata_url = f"https://pypi.org/pypi/{package_title}/json"
     async with http_session.get(metadata_url) as response:
         package_metadata = await response.json()
@@ -81,11 +81,14 @@ async def get_package(http_session: aiohttp.ClientSession, package_title: str) -
 
     version = info["version"]
     download_url = await find_package_source_download_url(http_session, package_title)
-    inspector_url = urlparse(download_url)
-    inspector_url = inspector_url._replace(netloc="inspector.pypi.io")._replace(
-        path=f"project/{package_title}/{version}" + str(inspector_url.path)
-    )
-    inspector_url = str(urlunparse(inspector_url))
+    if download_url is not None:
+        inspector_url = urlparse(download_url)
+        inspector_url = inspector_url._replace(netloc="inspector.pypi.io")._replace(
+            path=f"project/{package_title}/{version}" + str(inspector_url.path)
+        )
+        inspector_url = str(urlunparse(inspector_url))
+    else:
+        inspector_url = None
 
     return Package(
         author=info["author"],

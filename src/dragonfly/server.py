@@ -110,6 +110,9 @@ class PyPIPackage(BaseModel):
 class PackageScanResults(BaseModel):
     """Results of the scan"""
 
+    # Package name
+    name: str
+
     # File with the highest score
     most_malicious_file: str
 
@@ -143,6 +146,7 @@ async def pypi_check(package_metadata: PyPIPackage, request: Request) -> Package
             analysis = search_contents(request.app.state.rules, package_contents)
             most_malicious_file = max(analysis.malicious_files, key=MaliciousFile.calculate_file_score).filename
             return PackageScanResults(
+                name=package.name,
                 most_malicious_file=most_malicious_file,
                 matches=list(analysis.get_matched_rules().keys()),
                 pypi_link=package.pypi_url,
