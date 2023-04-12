@@ -26,8 +26,8 @@ class Package:
 class MaliciousFile:
     """Represents a malicious file, which YARA rules it matched, and it's individual score"""
 
-    # Filename
     filename: str
+    """Filename"""
 
     # Mapping of rule name to rule score
     rules: dict[str, int]
