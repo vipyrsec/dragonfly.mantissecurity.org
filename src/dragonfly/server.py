@@ -17,7 +17,6 @@ from . import __version__
 from .packages import (
     MaliciousFile,
     fetch_package_contents,
-    find_package_source_download_url,
     get_package,
     search_contents,
 )
