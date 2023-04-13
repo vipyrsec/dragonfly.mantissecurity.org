@@ -1,5 +1,5 @@
 [project]
-name = "dragonfly.letsbuilda.dev"
+name = "dragonfly.mantissecurity.org"
 description = "Public API for our projects"
 authors = [
     { name = "Bradley Reynolds", email = "bradley.reynolds@darbia.dev" },
@@ -17,8 +17,8 @@ dependencies = [
 dynamic = ["version"]
 
 [project.urls]
-repository = "https://github.com/letsbuilda/dragonfly.letsbuilda.dev/"
-documentation = "https://docs.letsbuilda.dev/dragonfly.letsbuilda.dev/"
+repository = "https://github.com/mantissecurity/dragonfly.mantissecurity.org/"
+documentation = "https://docs.mantissecurity.org/dragonfly.mantissecurity.org/"
 
 [project.optional-dependencies]
 dev = [
