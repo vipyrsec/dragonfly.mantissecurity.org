@@ -4,6 +4,9 @@
 Changelog
 =========
 
+- :release:`2.0.0 <13th April 2023>`
+- :feature:`16` List details at package level instead of detailing per file
+
 - :release:`1.3.0 <9th April 2023>`
 - :feature:`12` Add weights to Yara matches
 

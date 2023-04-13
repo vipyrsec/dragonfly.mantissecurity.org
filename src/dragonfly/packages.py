@@ -3,8 +3,23 @@
 import tarfile
 from dataclasses import dataclass
 from io import BytesIO
+from urllib.parse import urlparse, urlunparse
 
 import aiohttp
+
+
+@dataclass
+class Package:
+    """Dataclass representing a PyPi package with a few interesting properties included"""
+
+    author: str
+    author_email: str | None
+    description: str | None
+    name: str
+    pypi_url: str
+    version: str
+    inspector_url: str | None
+    download_url: str | None
 
 
 @dataclass
@@ -14,11 +29,11 @@ class MaliciousFile:
     filename: str
     """Filename"""
 
-    rules: list[str]
-    """Rules that this file matched"""
+    # Mapping of rule name to rule score
+    rules: dict[str, int]
 
-    score: int
-    """Individual score for this file only"""
+    def calculate_file_score(self) -> int:
+        return sum(self.rules.values())
 
 
 @dataclass
@@ -27,8 +42,17 @@ class PackageAnalysisResults:
 
     malicious_files: list[MaliciousFile]
 
-    def calculate_total_score(self) -> int:
-        return sum(file.score for file in self.malicious_files)
+    def get_matched_rules(self) -> dict[str, int]:
+        """Aggregate all of the matches rules and return the rule name mapped to it's weight"""
+        rules: dict[str, int] = {}
+        for file in self.malicious_files:
+            for rule, weight in file.rules.items():
+                rules[rule] = weight
+
+        return rules
+
+    def calculate_package_score(self) -> int:
+        return sum(self.get_matched_rules().values())
 
 
 async def find_package_source_download_url(http_session: aiohttp.ClientSession, package_title: str) -> str | None:
@@ -46,6 +70,36 @@ async def find_package_source_download_url(http_session: aiohttp.ClientSession, 
             return url["url"]
 
     return None
+
+
+async def get_package(http_session: aiohttp.ClientSession, package_title: str) -> Package:
+    """Parse package metadata from the PyPI JSON API."""
+    metadata_url = f"https://pypi.org/pypi/{package_title}/json"
+    async with http_session.get(metadata_url) as response:
+        package_metadata = await response.json()
+        info = package_metadata["info"]
+
+    version = info["version"]
+    download_url = await find_package_source_download_url(http_session, package_title)
+    if download_url is not None:
+        inspector_url = urlparse(download_url)
+        inspector_url = inspector_url._replace(netloc="inspector.pypi.io")._replace(
+            path=f"project/{package_title}/{version}" + str(inspector_url.path)
+        )
+        inspector_url = str(urlunparse(inspector_url))
+    else:
+        inspector_url = None
+
+    return Package(
+        author=info["author"],
+        author_email=info.get("author_email"),
+        description=info["description"] or None,
+        name=info["name"],
+        pypi_url=info["package_url"],
+        version=version,
+        inspector_url=inspector_url,
+        download_url=download_url,
+    )
 
 
 async def fetch_package_contents(
@@ -71,8 +125,7 @@ def search_contents(rules, files: dict[str, str]) -> PackageAnalysisResults:
         matches = rules.match(data=file_contents)
         file = MaliciousFile(
             filename=file_name,
-            rules=[match.namespace for match in matches],
-            score=sum(match.meta.get("weight", 1) for match in matches),
+            rules={match.namespace: match.meta.get("weight", 1) for match in matches},
         )
         malicious_files.append(file)
 

@@ -15,8 +15,9 @@ from starlette.requests import Request
 
 from . import __version__
 from .packages import (
+    MaliciousFile,
     fetch_package_contents,
-    find_package_source_download_url,
+    get_package,
     search_contents,
 )
 from .rules import get_rules
@@ -106,7 +107,22 @@ class PyPIPackage(BaseModel):
 class PackageScanResults(BaseModel):
     """Results of the scan"""
 
-    matches: dict[str, list[str]]
+    # Package name
+    name: str
+
+    # File with the highest score
+    most_malicious_file: str
+
+    # All unique yara rules that were matched. Note that this is across the entire package.
+    matches: list[str]
+
+    # Pypi link to the package itself
+    pypi_link: str
+
+    # Inspector link to the offending file
+    inspector_link: str
+
+    # Total score of the entire package
     score: int
 
 
@@ -115,7 +131,8 @@ async def pypi_check(package_metadata: PyPIPackage, request: Request) -> Package
     """Scan a PyPI package for malware"""
     try:
         async with aiohttp.ClientSession(raise_for_status=True) as http_session:
-            if download_url := await find_package_source_download_url(http_session, package_metadata.package_name):
+            package = await get_package(http_session, package_metadata.package_name)
+            if download_url := package.download_url:
                 package_contents = await fetch_package_contents(http_session, download_url)
             else:
                 raise HTTPException(
@@ -124,9 +141,14 @@ async def pypi_check(package_metadata: PyPIPackage, request: Request) -> Package
                 )
 
             analysis = search_contents(request.app.state.rules, package_contents)
+            most_malicious_file = max(analysis.malicious_files, key=MaliciousFile.calculate_file_score).filename
             return PackageScanResults(
-                matches={file.filename: file.rules for file in analysis.malicious_files if file.rules},
-                score=analysis.calculate_total_score(),
+                name=package.name,
+                most_malicious_file=most_malicious_file,
+                matches=list(analysis.get_matched_rules().keys()),
+                pypi_link=package.pypi_url,
+                inspector_link=f"{package.inspector_url}/{most_malicious_file}",
+                score=analysis.calculate_package_score(),
             )
 
     except ClientResponseError as exception:
