@@ -4,8 +4,12 @@ import tarfile
 from dataclasses import dataclass
 from io import BytesIO
 from urllib.parse import urlparse, urlunparse
+import typing
+from typing import IO
 
 import aiohttp
+
+PACKAGE_SIZE_LIMIT = 2 ** 28  # 0.25 GiB
 
 
 @dataclass
@@ -108,13 +112,26 @@ async def fetch_package_contents(
     """Return a dictionary mapping filenames to content"""
     files = {}
     buffer = BytesIO()
+    read_so_far = 0
     async with http_session.get(package_source_download_url) as response:
-        buffer.write(await response.content.read())
+        async for chunk in response.content.iter_chunked(1024):
+            buffer.write(chunk)
+            read_so_far += len(chunk)
+            if read_so_far > PACKAGE_SIZE_LIMIT:
+                raise ValueError("Package is too big uwu >w< :flushed:")
     buffer.seek(0)
+    read_so_far = 0
     with tarfile.open(fileobj=buffer) as file:
         for tarinfo in file:
             if tarinfo.isreg():
-                files[tarinfo.name] = file.extractfile(tarinfo.name).read().decode(encoding="UTF-8", errors="ignore")
+                file_contents = []
+                decompressed = typing.cast(IO[bytes], file.extractfile(tarinfo.name))
+                while chunk := decompressed.read(1024):
+                    file_contents.append(chunk)
+                    read_so_far += len(chunk)
+                    if read_so_far > PACKAGE_SIZE_LIMIT:
+                        raise ValueError("Package is too big uwu >w< :flushed:")
+                files[tarinfo.name] = b"".join(file_contents).decode(encoding="UTF-8", errors="ignore")
     return files
 
 
