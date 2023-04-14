@@ -5,9 +5,6 @@ import sys
 from contextlib import asynccontextmanager
 from os import getenv
 
-logger = logging.getLogger(__file__)
-logger.addHandler(logging.StreamHandler(sys.stderr))
-
 import aiohttp
 import sentry_sdk
 from aiohttp import ClientResponseError
@@ -26,6 +23,9 @@ from .packages import (
     search_contents,
 )
 from .rules import get_rules
+
+logger = logging.getLogger(__file__)
+logger.addHandler(logging.StreamHandler(sys.stderr))
 
 
 @asynccontextmanager
