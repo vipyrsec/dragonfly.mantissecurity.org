@@ -4,6 +4,9 @@
 Changelog
 =========
 
+- :release: `2.1.0 <14th April 2023>`
+- :feature: `18` Limit package size to avoid OOMing
+
 - :release:`2.0.0 <13th April 2023>`
 - :feature:`16` List details at package level instead of detailing per file
 

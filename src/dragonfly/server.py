@@ -1,5 +1,7 @@
 """API server definition"""
 
+import logging
+import sys
 from contextlib import asynccontextmanager
 from os import getenv
 
@@ -21,6 +23,9 @@ from .packages import (
     search_contents,
 )
 from .rules import get_rules
+
+logger = logging.getLogger(__file__)
+logger.addHandler(logging.StreamHandler(sys.stderr))
 
 
 @asynccontextmanager
@@ -126,7 +131,13 @@ class PackageScanResults(BaseModel):
     score: int
 
 
-@router_root.post("/check/", responses={404: {"model": Error, "description": "The package was not found"}})
+@router_root.post(
+    "/check/",
+    responses={
+        404: {"model": Error, "description": "The package was not found"},
+        507: {"model": Error, "description": "The package was too large to proceed"},
+    },
+)
 async def pypi_check(package_metadata: PyPIPackage, request: Request) -> PackageScanResults:
     """Scan a PyPI package for malware"""
     try:
@@ -140,7 +151,15 @@ async def pypi_check(package_metadata: PyPIPackage, request: Request) -> Package
                     detail="Package is a wheel!",
                 )
 
-            analysis = search_contents(request.app.state.rules, package_contents)
+            try:
+                analysis = search_contents(request.app.state.rules, package_contents)
+            except ValueError:
+                logger.error("Package '%s' was too large to scan!")
+                raise HTTPException(
+                    status_code=507,
+                    detail="Package '%s' was too large to scan!",
+                ) from None
+
             most_malicious_file = max(analysis.malicious_files, key=MaliciousFile.calculate_file_score).filename
             return PackageScanResults(
                 name=package.name,
