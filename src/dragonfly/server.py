@@ -1,9 +1,10 @@
 """API server definition"""
 
+import logging
+import sys
 from contextlib import asynccontextmanager
 from os import getenv
-import sys
-import logging
+
 logger = logging.getLogger(__file__)
 logger.addHandler(logging.StreamHandler(sys.stderr))
 
@@ -130,7 +131,13 @@ class PackageScanResults(BaseModel):
     score: int
 
 
-@router_root.post("/check/", responses={404: {"model": Error, "description": "The package was not found"}})
+@router_root.post(
+    "/check/",
+    responses={
+        404: {"model": Error, "description": "The package was not found"},
+        507: {"model": Error, "description": "The package was too large to proceed"},
+    },
+)
 async def pypi_check(package_metadata: PyPIPackage, request: Request) -> PackageScanResults:
     """Scan a PyPI package for malware"""
     try:
@@ -149,7 +156,7 @@ async def pypi_check(package_metadata: PyPIPackage, request: Request) -> Package
             except ValueError:
                 logger.error("Package '%s' was too large to scan!")
                 raise HTTPException(
-                    status_code=500,
+                    status_code=507,
                     detail="Package '%s' was too large to scan!",
                 ) from None
 
