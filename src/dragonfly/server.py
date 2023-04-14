@@ -2,6 +2,10 @@
 
 from contextlib import asynccontextmanager
 from os import getenv
+import sys
+import logging
+logger = logging.getLogger(__file__)
+logger.addHandler(logging.StreamHandler(sys.stderr))
 
 import aiohttp
 import sentry_sdk
@@ -140,7 +144,15 @@ async def pypi_check(package_metadata: PyPIPackage, request: Request) -> Package
                     detail="Package is a wheel!",
                 )
 
-            analysis = search_contents(request.app.state.rules, package_contents)
+            try:
+                analysis = search_contents(request.app.state.rules, package_contents)
+            except ValueError:
+                logger.error("Package '%s' was too large to scan!")
+                raise HTTPException(
+                    status_code=500,
+                    detail="Package '%s' was too large to scan!",
+                ) from None
+
             most_malicious_file = max(analysis.malicious_files, key=MaliciousFile.calculate_file_score).filename
             return PackageScanResults(
                 name=package.name,
