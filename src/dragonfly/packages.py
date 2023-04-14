@@ -1,15 +1,15 @@
 """Interactions with parsing package metadata and contents"""
 
 import tarfile
+import typing
 from dataclasses import dataclass
 from io import BytesIO
-from urllib.parse import urlparse, urlunparse
-import typing
 from typing import IO
+from urllib.parse import urlparse, urlunparse
 
 import aiohttp
 
-PACKAGE_SIZE_LIMIT = 2 ** 28  # 0.25 GiB
+PACKAGE_SIZE_LIMIT = 2**28  # 0.25 GiB
 
 
 @dataclass
@@ -118,7 +118,7 @@ async def fetch_package_contents(
             buffer.write(chunk)
             read_so_far += len(chunk)
             if read_so_far > PACKAGE_SIZE_LIMIT:
-                raise ValueError("Package is too big uwu >w< :flushed:")
+                raise ValueError(f"Package size exceeded limit ({PACKAGE_SIZE_LIMIT} bytes)")
     buffer.seek(0)
     read_so_far = 0
     with tarfile.open(fileobj=buffer) as file:
@@ -130,7 +130,7 @@ async def fetch_package_contents(
                     file_contents.append(chunk)
                     read_so_far += len(chunk)
                     if read_so_far > PACKAGE_SIZE_LIMIT:
-                        raise ValueError("Package is too big uwu >w< :flushed:")
+                        raise ValueError(f"Package size exceeded limit ({PACKAGE_SIZE_LIMIT} bytes)")
                 files[tarinfo.name] = b"".join(file_contents).decode(encoding="UTF-8", errors="ignore")
     return files
 
