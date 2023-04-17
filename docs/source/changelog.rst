@@ -4,6 +4,9 @@
 Changelog
 =========
 
+- :release: `2.1.1 <14th April 2023>`
+- :feature: `21` Add version string 
+
 - :release: `2.1.0 <14th April 2023>`
 - :feature: `18` Limit package size to avoid OOMing
 
