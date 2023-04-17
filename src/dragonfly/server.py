@@ -130,6 +130,9 @@ class PackageScanResults(BaseModel):
     # Total score of the entire package
     score: int
 
+    # Version of the package that was checked
+    version: str
+
 
 @router_root.post(
     "/check/",
@@ -159,7 +162,8 @@ async def pypi_check(package_metadata: PyPIPackage, request: Request) -> Package
                     status_code=507,
                     detail="Package '%s' was too large to scan!",
                 ) from None
-
+            
+            print("!"*10, package.version, "!"*10)
             most_malicious_file = max(analysis.malicious_files, key=MaliciousFile.calculate_file_score).filename
             return PackageScanResults(
                 name=package.name,
@@ -168,6 +172,7 @@ async def pypi_check(package_metadata: PyPIPackage, request: Request) -> Package
                 pypi_link=package.pypi_url,
                 inspector_link=f"{package.inspector_url}/{most_malicious_file}",
                 score=analysis.calculate_package_score(),
+                version=package.version,
             )
 
     except ClientResponseError as exception:
