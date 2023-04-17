@@ -163,7 +163,6 @@ async def pypi_check(package_metadata: PyPIPackage, request: Request) -> Package
                     detail="Package '%s' was too large to scan!",
                 ) from None
             
-            print("!"*10, package.version, "!"*10)
             most_malicious_file = max(analysis.malicious_files, key=MaliciousFile.calculate_file_score).filename
             return PackageScanResults(
                 name=package.name,
