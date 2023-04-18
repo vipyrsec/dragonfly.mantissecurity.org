@@ -9,6 +9,8 @@ from urllib.parse import urlparse, urlunparse
 
 import aiohttp
 
+from .decorators import debug_func
+
 PACKAGE_SIZE_LIMIT = 2**28  # 0.25 GiB
 
 
@@ -36,6 +38,7 @@ class MaliciousFile:
     # Mapping of rule name to rule score
     rules: dict[str, int]
 
+    @debug_func
     def calculate_file_score(self) -> int:
         return sum(self.rules.values())
 
@@ -46,6 +49,7 @@ class PackageAnalysisResults:
 
     malicious_files: list[MaliciousFile]
 
+    @debug_func
     def get_matched_rules(self) -> dict[str, int]:
         """Aggregate all of the matches rules and return the rule name mapped to it's weight"""
         rules: dict[str, int] = {}
@@ -55,10 +59,12 @@ class PackageAnalysisResults:
 
         return rules
 
+    @debug_func
     def calculate_package_score(self) -> int:
         return sum(self.get_matched_rules().values())
 
 
+@debug_func
 async def find_package_source_download_url(http_session: aiohttp.ClientSession, package_title: str) -> str | None:
     """Find the `.tar.gz` download for a package.
     Return `None` if there are no files or if only wheels are available."""
@@ -76,6 +82,7 @@ async def find_package_source_download_url(http_session: aiohttp.ClientSession, 
     return None
 
 
+@debug_func
 async def get_package(http_session: aiohttp.ClientSession, package_title: str) -> Package:
     """Parse package metadata from the PyPI JSON API."""
     metadata_url = f"https://pypi.org/pypi/{package_title}/json"
@@ -106,6 +113,7 @@ async def get_package(http_session: aiohttp.ClientSession, package_title: str) -
     )
 
 
+@debug_func
 async def fetch_package_contents(
     http_session: aiohttp.ClientSession, package_source_download_url: str
 ) -> dict[str, str]:
@@ -135,6 +143,7 @@ async def fetch_package_contents(
     return files
 
 
+@debug_func
 def search_contents(rules, files: dict[str, str]) -> PackageAnalysisResults:
     """Check a directory for malicious files and return the matches"""
     malicious_files: list[MaliciousFile] = []

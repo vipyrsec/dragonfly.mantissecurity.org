@@ -8,12 +8,15 @@ from zipfile import ZipFile
 import aiohttp
 import yara
 
+from .decorators import debug_func
+
 REPO_ZIP_URL: Final[str] = "https://api.github.com/repos/SkeletalDemise/DragonFly/zipball/"
 REPO_TOP_COMMIT_URL: Final[str] = "https://api.github.com/repos/SkeletalDemise/DragonFly/commits/main"
 AUTH_HEADERS: Final[dict[str, str]] = {"Authorization": f"Bearer {getenv('DRAGONFLY_GITHUB_TOKEN')}"}
 JSON_HEADERS: Final[dict[str, str]] = {"Accept": "application/vnd.github.VERSION.sha"}
 
 
+@debug_func
 async def _fetch_rules() -> tuple[str, dict[str, str]]:
     """Return a dictionary mapping filenames to content"""
     files = {}
@@ -34,6 +37,7 @@ async def _fetch_rules() -> tuple[str, dict[str, str]]:
     return rules_commit, files
 
 
+@debug_func
 async def get_rules() -> tuple[str, yara.Rules]:
     """Fetch and compile the rules"""
     rules_commit, sources = await _fetch_rules()

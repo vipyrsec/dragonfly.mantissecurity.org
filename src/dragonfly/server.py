@@ -1,5 +1,6 @@
 """API server definition"""
 
+import argparse
 import logging
 import sys
 from contextlib import asynccontextmanager
@@ -16,6 +17,7 @@ from pydantic import BaseModel
 from starlette.requests import Request
 
 from . import __version__
+from .decorators import debug_func
 from .packages import (
     MaliciousFile,
     fetch_package_contents,
@@ -24,10 +26,19 @@ from .packages import (
 )
 from .rules import get_rules
 
+parser = argparse.ArgumentParser()
+parser.add_argument("--debug", action="store_true", default=False)
+args = parser.parse_args()
+
+debug = args.debug
+
 logger = logging.getLogger(__file__)
 logger.addHandler(logging.StreamHandler(sys.stderr))
 
+logger.setLevel(logging.DEBUG if debug else logging.WARNING)
 
+
+@debug_func
 @asynccontextmanager
 async def lifespan(app_: FastAPI):
     """Load the state for the app"""
@@ -80,6 +91,7 @@ class ServerMetadata(BaseModel):
     rules_commit: str
 
 
+@debug_func
 @router_root.get("/")
 async def root_route(request: Request) -> ServerMetadata:
     """Get server metadata"""
@@ -94,6 +106,7 @@ async def root_route(request: Request) -> ServerMetadata:
     )
 
 
+@debug_func
 @router_root.post("/update-rules/")
 async def update_rules(request: Request) -> str:
     """Update the rules"""
@@ -134,6 +147,7 @@ class PackageScanResults(BaseModel):
     version: str
 
 
+@debug_func
 @router_root.post(
     "/check/",
     responses={
@@ -175,6 +189,7 @@ async def pypi_check(package_metadata: PyPIPackage, request: Request) -> Package
             )
 
     except ClientResponseError as exception:
+        logger.warning(f"Upstream responded with '{exception.message}'!")
         raise HTTPException(
             status_code=exception.status,
             detail=f"Upstream responded with '{exception.message}'!",
