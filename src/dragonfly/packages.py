@@ -143,8 +143,8 @@ def search_contents(rules, files: dict[str, str]) -> PackageAnalysisResults:
         file = MaliciousFile(
             filename=file_name,
             rules={
-                match.namespace: match.meta.get("weight", 1) 
-                for match in matches 
+                match.namespace: match.meta.get("weight", 1)
+                for match in matches
                 if (filetypes := match.meta.get("filetype")) is None or file_name.endswith(tuple(filetypes.split()))
             },
         )
