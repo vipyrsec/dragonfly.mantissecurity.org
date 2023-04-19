@@ -4,6 +4,9 @@
 Changelog
 =========
 
+- :release: `2.3.0 <18th April 2023>`
+- :feature: `23` File filtering 
+
 - :release: `2.2.0 <16th April 2023>`
 - :feature: `21` Add version string 
 
