@@ -43,8 +43,8 @@ sentry_sdk.init(
     dsn=getenv("DRAGONFLY_SENTRY_DSN"),
     environment=getenv("DRAGONFLY_SENTRY_ENV"),
     send_default_pii=True,
-    traces_sample_rate=1.0,
-    profiles_sample_rate=1.0,
+    traces_sample_rate=0.25,
+    profiles_sample_rate=0.25,
     release=f"{release_prefix}@{git_sha}",
 )
 
