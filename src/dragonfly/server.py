@@ -23,6 +23,7 @@ from .packages import (
     search_contents,
 )
 from .rules import get_rules
+from .greylist import greylist
 
 logger = logging.getLogger(__file__)
 logger.addHandler(logging.StreamHandler(sys.stderr))
@@ -162,6 +163,10 @@ async def pypi_check(package_metadata: PyPIPackage, request: Request) -> Package
                     status_code=507,
                     detail="Package '%s' was too large to scan!",
                 ) from None
+
+            skip_file = greyliist(package.name, analysis)
+
+            # TODO: what do I need to return if the file is to be skipped? Is this the right place to check it?
 
             most_malicious_file = max(analysis.malicious_files, key=MaliciousFile.calculate_file_score).filename
             return PackageScanResults(
