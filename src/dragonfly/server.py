@@ -26,11 +26,7 @@ from .packages import (
 )
 from .rules import get_rules
 
-parser = argparse.ArgumentParser()
-parser.add_argument("--debug", action="store_true", default=False)
-args = parser.parse_args()
-
-debug = args.debug
+debug = getenv("DEBUG")
 
 logger = logging.getLogger(__file__)
 logger.addHandler(logging.StreamHandler(sys.stderr))
