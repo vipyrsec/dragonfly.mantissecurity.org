@@ -14,6 +14,7 @@ from pydantic import BaseModel
 from starlette.requests import Request
 
 from . import __version__
+from .constants import HEADERS
 from .packages import (
     fetch_package_contents,
     find_package_source_download_url,
@@ -115,7 +116,7 @@ class PackageScanResults(BaseModel):
 async def pypi_check(package_metadata: PyPIPackage, request: Request) -> PackageScanResults:
     """Scan a PyPI package for malware"""
     try:
-        async with aiohttp.ClientSession(raise_for_status=True) as http_session:
+        async with aiohttp.ClientSession(raise_for_status=True, headers=HEADERS) as http_session:
             if download_url := await find_package_source_download_url(http_session, package_metadata.package_name):
                 package_contents = await fetch_package_contents(http_session, download_url)
             else:
