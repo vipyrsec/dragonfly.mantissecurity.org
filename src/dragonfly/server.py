@@ -1,5 +1,7 @@
 """API server definition"""
 
+import logging
+import sys
 from contextlib import asynccontextmanager
 from os import getenv
 
@@ -16,11 +18,15 @@ from starlette.requests import Request
 from . import __version__
 from .constants import HEADERS
 from .packages import (
+    MaliciousFile,
     fetch_package_contents,
-    find_package_source_download_url,
+    get_package,
     search_contents,
 )
 from .rules import get_rules
+
+logger = logging.getLogger(__file__)
+logger.addHandler(logging.StreamHandler(sys.stderr))
 
 
 @asynccontextmanager
@@ -38,10 +44,8 @@ sentry_sdk.init(
     dsn=getenv("DRAGONFLY_SENTRY_DSN"),
     environment=getenv("DRAGONFLY_SENTRY_ENV"),
     send_default_pii=True,
-    traces_sample_rate=1.0,
-    _experiments={
-        "profiles_sample_rate": 1.0,
-    },
+    traces_sample_rate=0.25,
+    profiles_sample_rate=0.25,
     release=f"{release_prefix}@{git_sha}",
 )
 
@@ -109,15 +113,41 @@ class PyPIPackage(BaseModel):
 class PackageScanResults(BaseModel):
     """Results of the scan"""
 
-    matches: dict[str, list[str]]
+    # Package name
+    name: str
+
+    # File with the highest score
+    most_malicious_file: str
+
+    # All unique yara rules that were matched. Note that this is across the entire package.
+    matches: list[str]
+
+    # Pypi link to the package itself
+    pypi_link: str
+
+    # Inspector link to the offending file
+    inspector_link: str
+
+    # Total score of the entire package
+    score: int
+
+    # Version of the package that was checked
+    version: str
 
 
-@router_root.post("/check/", responses={404: {"model": Error, "description": "The package was not found"}})
+@router_root.post(
+    "/check/",
+    responses={
+        404: {"model": Error, "description": "The package was not found"},
+        507: {"model": Error, "description": "The package was too large to proceed"},
+    },
+)
 async def pypi_check(package_metadata: PyPIPackage, request: Request) -> PackageScanResults:
     """Scan a PyPI package for malware"""
     try:
         async with aiohttp.ClientSession(raise_for_status=True, headers=HEADERS) as http_session:
-            if download_url := await find_package_source_download_url(http_session, package_metadata.package_name):
+            package = await get_package(http_session, package_metadata.package_name)
+            if download_url := package.download_url:
                 package_contents = await fetch_package_contents(http_session, download_url)
             else:
                 raise HTTPException(
@@ -125,8 +155,25 @@ async def pypi_check(package_metadata: PyPIPackage, request: Request) -> Package
                     detail="Package is a wheel!",
                 )
 
-            results = search_contents(request.app.state.rules, package_contents)
-            return PackageScanResults(matches=results)
+            try:
+                analysis = search_contents(request.app.state.rules, package_contents)
+            except ValueError:
+                logger.error("Package '%s' was too large to scan!")
+                raise HTTPException(
+                    status_code=507,
+                    detail="Package '%s' was too large to scan!",
+                ) from None
+
+            most_malicious_file = max(analysis.malicious_files, key=MaliciousFile.calculate_file_score).filename
+            return PackageScanResults(
+                name=package.name,
+                most_malicious_file=most_malicious_file,
+                matches=list(analysis.get_matched_rules().keys()),
+                pypi_link=package.pypi_url,
+                inspector_link=f"{package.inspector_url}/{most_malicious_file}",
+                score=analysis.calculate_package_score(),
+                version=package.version,
+            )
 
     except ClientResponseError as exception:
         raise HTTPException(

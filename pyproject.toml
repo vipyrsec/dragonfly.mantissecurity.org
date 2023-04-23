@@ -1,5 +1,5 @@
 [project]
-name = "dragonfly.letsbuilda.dev"
+name = "dragonfly.mantissecurity.org"
 description = "Public API for our projects"
 authors = [
     { name = "Bradley Reynolds", email = "bradley.reynolds@darbia.dev" },
@@ -9,17 +9,17 @@ readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
     "uvicorn[standard]==0.21.1",
-    "fastapi==0.95.0",
-    "sentry-sdk[fastapi]==1.19.1",
+    "fastapi==0.95.1",
+    "sentry-sdk[fastapi]==1.20.0",
     "aiohttp==3.8.4",
-    "yara-python==4.3.0",
+    "yara-python==4.3.1",
     "letsbuilda-pypi==3.0.0",
 ]
 dynamic = ["version"]
 
 [project.urls]
-repository = "https://github.com/letsbuilda/dragonfly.letsbuilda.dev/"
-documentation = "https://docs.letsbuilda.dev/dragonfly.letsbuilda.dev/"
+repository = "https://github.com/mantissecurity/dragonfly.mantissecurity.org/"
+documentation = "https://docs.mantissecurity.org/dragonfly.mantissecurity.org/"
 
 [project.optional-dependencies]
 dev = [
