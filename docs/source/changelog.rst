@@ -4,6 +4,9 @@
 Changelog
 =========
 
+- :release: `3.0.0 <23th April 2023>`
+- :feature: `19` Handle wheels
+
 - :release: `2.3.0 <18th April 2023>`
 - :feature: `23` File filtering
 
