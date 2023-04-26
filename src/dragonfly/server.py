@@ -108,10 +108,15 @@ async def pypi_check(incoming_metadata: PyPIPackage, request: Request) -> Packag
     try:
         async with aiohttp.ClientSession(raise_for_status=True, headers=HEADERS) as http_session:
             pypi_client = PyPIServices(http_session)
-            package_metadata = await pypi_client.get_package_metadata_for_release(
-                incoming_metadata.package_name,
-                incoming_metadata.package_version,
-            )
+            if incoming_metadata.package_version is not None:
+                package_metadata = await pypi_client.get_package_metadata_for_release(
+                    incoming_metadata.package_name,
+                    incoming_metadata.package_version,
+                )
+            else:
+                package_metadata = await pypi_client.get_package_metadata(
+                    incoming_metadata.package_name,
+                )
 
             distribution_scan_results: list[PackageDistributionScanResults] = []
             for url in package_metadata.urls:

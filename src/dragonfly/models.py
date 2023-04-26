@@ -1,6 +1,6 @@
 """Model definitions"""
 
-from pydantic.dataclasses import dataclass
+from pydantic.dataclasses import dataclass, Field
 
 
 @dataclass(frozen=True)
@@ -24,7 +24,7 @@ class PyPIPackage:
     """Incoming package data"""
 
     package_name: str
-    package_version: str
+    package_version: str | None = Field(None)
 
 
 @dataclass(frozen=True)
