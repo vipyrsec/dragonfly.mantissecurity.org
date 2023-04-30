@@ -8,18 +8,26 @@ from os import getenv
 import aiohttp
 import sentry_sdk
 from aiohttp import ClientResponseError
-from fastapi import APIRouter, FastAPI, HTTPException, status
+from fastapi import APIRouter, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-
-# pylint: disable-next=no-name-in-module
-from pydantic import BaseModel
+from letsbuilda.pypi import PyPIServices
 from starlette.requests import Request
 
 from . import __version__
-from .packages import (
+from .constants import HEADERS
+from .models import (
+    Error,
+    HighestScoreDistribution,
     MaliciousFile,
-    fetch_package_contents,
-    get_package,
+    PackageDistributionScanResults,
+    PackageScanResults,
+    PyPIPackage,
+    ServerMetadata,
+)
+from .packages import (
+    fetch_package_distribution,
+    read_distribution_tarball,
+    read_distribution_wheel,
     search_contents,
 )
 from .rules import get_rules
@@ -62,22 +70,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-
-class Error(BaseModel):
-    """Returned when an error occurs"""
-
-    detail: str
-
-
 router_root = APIRouter()
-
-
-class ServerMetadata(BaseModel):
-    """Metadata about the server"""
-
-    version: str
-    server_commit: str
-    rules_commit: str
 
 
 @router_root.get("/")
@@ -103,37 +96,6 @@ async def update_rules(request: Request) -> str:
     return True
 
 
-class PyPIPackage(BaseModel):
-    """Incoming package data"""
-
-    package_name: str
-
-
-class PackageScanResults(BaseModel):
-    """Results of the scan"""
-
-    # Package name
-    name: str
-
-    # File with the highest score
-    most_malicious_file: str
-
-    # All unique yara rules that were matched. Note that this is across the entire package.
-    matches: list[str]
-
-    # Pypi link to the package itself
-    pypi_link: str
-
-    # Inspector link to the offending file
-    inspector_link: str
-
-    # Total score of the entire package
-    score: int
-
-    # Version of the package that was checked
-    version: str
-
-
 @router_root.post(
     "/check/",
     responses={
@@ -141,37 +103,63 @@ class PackageScanResults(BaseModel):
         507: {"model": Error, "description": "The package was too large to proceed"},
     },
 )
-async def pypi_check(package_metadata: PyPIPackage, request: Request) -> PackageScanResults:
+async def pypi_check(incoming_metadata: PyPIPackage, request: Request) -> PackageScanResults:
     """Scan a PyPI package for malware"""
     try:
-        async with aiohttp.ClientSession(raise_for_status=True) as http_session:
-            package = await get_package(http_session, package_metadata.package_name)
-            if download_url := package.download_url:
-                package_contents = await fetch_package_contents(http_session, download_url)
-            else:
-                raise HTTPException(
-                    status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-                    detail="Package is a wheel!",
+        async with aiohttp.ClientSession(raise_for_status=True, headers=HEADERS) as http_session:
+            pypi_client = PyPIServices(http_session)
+            package_metadata = await pypi_client.get_package_metadata(
+                incoming_metadata.package_name,
+                incoming_metadata.package_version,
+            )
+
+            distribution_scan_results: list[PackageDistributionScanResults] = []
+            for url in package_metadata.urls:
+                try:
+                    distribution_bytes = await fetch_package_distribution(http_session, url.url)
+                    if url.packagetype == "sdist":
+                        package_contents = read_distribution_tarball(distribution_bytes)
+                    else:
+                        package_contents = read_distribution_wheel(distribution_bytes)
+                except ValueError:
+                    logger.error("Package '%s' was too large to scan!")
+                    raise HTTPException(
+                        status_code=507,
+                        detail="Package '%s' was too large to scan!",
+                    ) from None
+
+                distribution_scan_results.append(
+                    PackageDistributionScanResults(
+                        file_name=url.filename,
+                        inspector_url=url.inspector_url,
+                        analysis=search_contents(request.app.state.rules, package_contents),
+                    )
                 )
 
-            try:
-                analysis = search_contents(request.app.state.rules, package_contents)
-            except ValueError:
-                logger.error("Package '%s' was too large to scan!")
-                raise HTTPException(
-                    status_code=507,
-                    detail="Package '%s' was too large to scan!",
-                ) from None
+            highest_scoring_distribution = max(
+                distribution_scan_results, key=lambda result: result.analysis.calculate_package_score()
+            )
+            highest_score = highest_scoring_distribution.analysis.calculate_package_score()
+            if highest_score > 0:
+                most_malicious_file = max(
+                    highest_scoring_distribution.analysis.malicious_files, key=MaliciousFile.calculate_file_score
+                ).file_name
 
-            most_malicious_file = max(analysis.malicious_files, key=MaliciousFile.calculate_file_score).filename
+                highest_score_distribution = HighestScoreDistribution(
+                    score=highest_score,
+                    matches=list(highest_scoring_distribution.analysis.get_matched_rules().keys()),
+                    most_malicious_file=most_malicious_file,
+                    inspector_link=f"{highest_scoring_distribution.inspector_url}/{most_malicious_file}",
+                )
+            else:
+                highest_score_distribution = None
+
             return PackageScanResults(
-                name=package.name,
-                most_malicious_file=most_malicious_file,
-                matches=list(analysis.get_matched_rules().keys()),
-                pypi_link=package.pypi_url,
-                inspector_link=f"{package.inspector_url}/{most_malicious_file}",
-                score=analysis.calculate_package_score(),
-                version=package.version,
+                name=package_metadata.info.name,
+                version=package_metadata.info.version,
+                pypi_link=package_metadata.info.package_url,
+                distributions=distribution_scan_results,
+                highest_score_distribution=highest_score_distribution,
             )
 
     except ClientResponseError as exception:
