@@ -10,7 +10,7 @@ import aiohttp
 
 from dragonfly.models import MaliciousFile, PackageAnalysisResults
 
-PACKAGE_SIZE_LIMIT = 2**28  # 0.25 GiB
+PACKAGE_SIZE_LIMIT = 1e8  # 0.1 GiB
 
 
 async def fetch_package_distribution(http_session: aiohttp.ClientSession, package_source_download_url: str) -> BytesIO:
