@@ -8,8 +8,8 @@ from zipfile import ZipFile
 import aiohttp
 import yara
 
-REPO_ZIP_URL: Final[str] = "https://api.github.com/repos/mantissecurity/security-intelligence/zipball/"
-REPO_TOP_COMMIT_URL: Final[str] = "https://api.github.com/repos/mantissecurity/security-intelligence/commits/main"
+REPO_ZIP_URL: Final[str] = "https://api.github.com/repos/vipyrsec/security-intelligence/zipball/"
+REPO_TOP_COMMIT_URL: Final[str] = "https://api.github.com/repos/vipyrsec/security-intelligence/commits/main"
 AUTH_HEADERS: Final[dict[str, str]] = {"Authorization": f"Bearer {getenv('DRAGONFLY_GITHUB_TOKEN')}"}
 JSON_HEADERS: Final[dict[str, str]] = {"Accept": "application/vnd.github.VERSION.sha"}
 
